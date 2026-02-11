@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>威尼斯 COS 环球记 - 百景打卡</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #eaeaea;
+            overflow-x: hidden;
+        }
+
+        /* 水波纹背景动画 */
+        .water-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.1;
+            background: 
+                radial-gradient(circle at 20% 80%, transparent 0%, transparent 50%, rgba(255,255,255,0.05) 50.5%, transparent 51%),
+                radial-gradient(circle at 80% 20%, transparent 0%, transparent 50%, rgba(255,255,255,0.05) 50.5%, transparent 51%);
+            animation: wave 20s ease-in-out infinite;
+        }
+
+        @keyframes wave {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-20px, -20px) scale(1.1); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding: 30px;
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #e94560, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(233, 69, 96, 0.3);
+        }
+
+        .subtitle {
+            color: #a0a0a0;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #e94560, #ff6b6b);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #e94560;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 12px;
+            margin-top: 40px;
+        }
+
+        .number-card {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid transparent;
+            user-select: none;
+        }
+
+        .number-card.available {
+            background: rgba(255,255,255,0.05);
+            color: #eaeaea;
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        .number-card.available:hover {
+            transform: translateY(-3px) scale(1.05);
+            background: rgba(233, 69, 96, 0.2);
+            border-color: #e94560;
+            box-shadow: 0 10px 30px rgba(233, 69, 96, 0.3);
+        }
+
+        .number-card.locked {
+            background: rgba(233, 69, 96, 0.9);
+            color: white;
+            border-color: #ff6b6b;
+            cursor: not-allowed;
+            transform: scale(0.95);
+        }
+
+        .number-card.locked::after {
+            content: '✓';
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        .number-card.locked .spot-name {
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.6rem;
+            opacity: 0.9;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 90%;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+            position: relative;
+            animation: modalPop 0.3s ease;
+        }
+
+        @keyframes modalPop {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-number {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #e94560;
+            margin-bottom: 10px;
+        }
+
+        .modal-spot {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #eaeaea;
+        }
+
+        .modal-desc {
+            color: #a0a0a0;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #e94560, #ff6b6b);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(233, 69, 96, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #eaeaea;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .reset-section {
+            text-align: center;
+            margin-top: 50px;
+            padding: 30px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 15px;
+        }
+
+        .reset-btn {
+            background: transparent;
+            border: 2px solid rgba(233, 69, 96, 0.5);
+            color: #e94560;
+            padding: 10px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .reset-btn:hover {
+            background: rgba(233, 69, 96, 0.1);
+            border-color: #e94560;
+        }
+
+        .celebration {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 5rem;
+            pointer-events: none;
+            opacity: 0;
+            z-index: 2000;
+        }
+
+        .celebration.show {
+            animation: celebrate 1s ease;
+        }
+
+        @keyframes celebrate {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 1; }
+            50% { transform: translate(-50%, -50%) scale(1.5) rotate(180deg); }
+            100% { transform: translate(-50%, -50%) scale(0) rotate(360deg); opacity: 0; }
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 1.8rem; }
+            .grid-container { grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 8px; }
+            .number-card { font-size: 1rem; }
+            .modal-content { padding: 25px; }
+            .modal-number { font-size: 3rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="water-bg"></div>
+    
+    <div class="container">
+        <header>
+            <h1>🎭 威尼斯 COS 环球记</h1>
+            <p class="subtitle">百景打卡挑战 · 一日底片特别篇</p>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-number" id="lockedCount">0</div>
+                    <div class="stat-label">已打卡</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="availableCount">100</div>
+                    <div class="stat-label">待探索</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="percentCount">0%</div>
+                    <div class="stat-label">完成度</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid-container" id="gridContainer"></div>
+
+        <div class="reset-section">
+            <p style="color: #888; margin-bottom: 15px; font-size: 0.9rem;">
+                ⚠️ 重置将清空所有打卡记录，不可恢复
+            </p>
+            <button class="reset-btn" onclick="resetAll()">🔄 重置所有打卡</button>
+        </div>
+    </div>
+
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <div class="modal-number" id="modalNumber">01</div>
+            <div class="modal-spot" id="modalSpot">圣马可广场</div>
+            <div class="modal-desc" id="modalDesc">
+                威尼斯的心脏，被拿破仑称为"欧洲最美的客厅"。
+                在这里拍下你的第一张威尼斯底片吧。
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="confirmLock()">📸 确认打卡</button>
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="celebration" id="celebration">📸✨</div>
+
+    <script>
+        // 威尼斯100个核心景点
+        const spots = [
+            { name: "圣马可广场", desc: "威尼斯的心脏，被拿破仑称为'欧洲最美的客厅'。鸽子、咖啡、钟声，在这里拍下你的第一张威尼斯底片。" },
+            { name: "圣马可大教堂", desc: "拜占庭式建筑的巅峰，金色马赛克覆盖8000平方米。记得抬头看《黄金祭坛》。" },
+            { name: "总督宫", desc: "哥特式建筑的杰作，叹息桥连接着宫殿与监狱。权力与绝望只隔一座桥。" },
+            { name: "叹息桥", desc: "囚犯们透过小窗看最后一眼威尼斯的地方。现在情侣们在这里接吻，据说能带来永恒的爱情。" },
+            { name: "里亚托桥", desc: "大运河上最古老的桥，莎士比亚《威尼斯商人》的背景地。桥上的商店比景色更热闹。" },
+            { name: "学院桥", desc: "拍摄大运河S型曲线的最佳机位，黄昏时分贡多拉经过，快门不要停。" },
+            { name: "赤足桥", desc: "连接圣马可区与多尔索杜罗区，桥名来源于附近的赤足教堂。游客少，适合拍人像。" },
+            { name: "宪法桥", desc: "威尼斯最新的桥，2008年由圣地亚哥·卡拉特拉瓦设计。现代主义与古老城市的对话。" },
+            { name: "大运河", desc: "威尼斯的主干道，4公里长的S型水道。1号水上巴士是最好的移动观景台。" },
+            { name: "圣乔治马焦雷教堂", desc: "帕拉第奥设计的经典，从圣马可广场隔海相望，钟楼登顶可拍全城。" },
+            { name: "安康圣母教堂", desc: "巴洛克式的穹顶是威尼斯天际线的标志，为1630年瘟疫结束而建。" },
+            { name: "弗拉里教堂", desc: "方济各会的总部，提香的《圣母升天》和《佩萨罗圣母》在这里。" },
+            { name: "圣乔凡尼保罗大教堂", desc: "威尼斯最大的教堂之一，25位总督埋葬于此，被称为'威尼斯的万神殿'。" },
+            { name: "圣扎卡里亚教堂", desc: "混合了哥特式与文艺复兴式，地下水位上涨，地下室常年被淹。" },
+            { name: "圣摩西教堂", desc: "巴洛克风格的华丽代表，内部金碧辉煌，游客稀少。" },
+            { name: "圣斯特凡诺教堂", desc: "拥有威尼斯最高的钟楼之一，广场是当地人踢足球的地方。" },
+            { name: "圣方济会荣耀圣母教堂", desc: "收藏了提香、多纳泰罗的作品，提香就埋葬在这里。" },
+            { name: "圣塞巴斯蒂亚诺教堂", desc: "保罗·委罗内塞的杰作遍布整个教堂，被称为'委罗内塞的教堂'。" },
+            { name: "圣阿尔维斯教堂", desc: "提香的《圣母子》在这里，教堂外观朴素，内部惊艳。" },
+            { name: "圣尼古拉达托伦蒂诺教堂", desc: "位于犹太人区附近，是了解威尼斯多元文化的窗口。" },
+            { name: "里亚托市场", desc: "早上7点的鱼市最热闹，金枪鱼、墨鱼、各种海鲜，是拍人文的好地方。" },
+            { name: "花神咖啡馆", desc: "1720年开业，世界上最古老的咖啡馆之一。热巧克力是招牌，但价格也是。" },
+            { name: "夸德里咖啡馆", desc: "圣马可广场上的另一家老店，坐在户外看广场日落，是威尼斯的必修课。" },
+            { name: "哈利酒吧", desc: "海明威、卓别林都来过，贝利尼鸡尾酒的发明地。一杯18欧，为历史买单。" },
+            { name: "威尼斯双年展花园", desc: "奇数年举办艺术双年展，偶数年建筑双年展。现代艺术的威尼斯舞台。" },
+            { name: "佩吉古根海姆美术馆", desc: "美国女收藏家的私人别墅，毕加索、波洛克、达利的作品在这里看大运河。" },
+            { name: "学院美术馆", desc: "威尼斯画派的大本营，贝利尼、提香、丁托列托，文艺复兴的威尼斯分支。" },
+            { name: "科雷尔博物馆", desc: "圣马可广场上的博物馆，威尼斯的历史、艺术、生活，一站式了解。" },
+            { name: "莫切尼戈宫博物馆", desc: "纺织与服饰博物馆，威尼斯贵族的华服，比现在的时装周更夸张。" },
+            { name: "雷佐尼科宫", desc: "18世纪威尼斯贵族生活的重现，提埃波罗的壁画在天花板上。" },
+            { name: "黄金宫", desc: "大运河上最华丽的哥特式建筑，弗兰切蒂美术馆所在地。" },
+            { name: "格拉西宫", desc: "弗朗索瓦·皮诺的当代艺术收藏，古典宫殿里的先锋艺术。" },
+            { name: "海关大楼博物馆", desc: "安藤忠雄改造的老海关，当代艺术与古老建筑的碰撞。" },
+            { name: "犹太人区", desc: "世界上最早的犹太人区（Ghetto），铁门、高墙、五座犹太教堂，历史的沉重。" },
+            { name: "布拉诺岛", desc: "彩色房子的小岛，每个颜色都是渔民为了辨认自己的家而刷的。" },
+            { name: "穆拉诺岛", desc: "玻璃岛，看工匠吹制玻璃的过程，比买纪念品更有价值。" },
+            { name: "托尔切洛岛", desc: "威尼斯的发源地，现在只有几十人居住，大教堂的马赛克比圣马可更古老。" },
+            { name: "丽都岛", desc: "威尼斯电影节举办地，11公里的沙滩，是逃离游客潮的好去处。" },
+            { name: "圣乔治马焦雷岛", desc: "与圣马可广场隔海相望，帕拉第奥的教堂，钟楼视野最佳。" },
+            { name: "圣拉扎罗 degli 亚美尼亚岛", desc: "亚美尼亚修道院，收藏着世界上最古老的亚美尼亚书籍。" },
+            { name: "圣塞尔沃洛岛", desc: "前精神病院，现在是艺术基金会，需要预约才能上岛。" },
+            { name: "贡多拉", desc: "80欧30分钟，贵但值得一次。船夫的歌声比风景更威尼斯。" },
+            { name: " traghetto", desc: "2欧元的贡多拉体验，当地人站着过河的方式，从圣马可到多尔索杜罗。" },
+            { name: "水上巴士1号线", desc: "大运河上的公交车，从罗马广场到圣马可，最便宜的观光方式。" },
+            { name: "水上出租车", desc: "120欧起步，但深夜从机场到酒店，是唯一的浪漫选择。" },
+            { name: "圣马可钟楼", desc: "99米高，电梯登顶，360度俯瞰威尼斯。整点时钟声震耳欲聋。" },
+            { name: "圣乔治马焦雷钟楼", desc: "比圣马可钟楼人少，视野一样好，适合拍日落。" },
+            { name: "安康圣母教堂钟楼", desc: "不对外开放，但穹顶本身已经是天际线的标志。" },
+            { name: "圣方济会荣耀圣母钟楼", desc: "威尼斯第二高的钟楼，可以俯瞰整个圣保罗区。" },
+            { name: "里亚托市场的早晨", desc: "6-8点，批发商和厨师的交易时间，比白天更有生活气息。" },
+            { name: "圣马可广场的黄昏", desc: "日落前一小时，金色光线打在教堂立面上，是摄影师的魔法时刻。" },
+            { name: "大运河的蓝调时刻", desc: "日落后20分钟，天空呈现深蓝色，两岸灯光亮起，贡多拉划过。" },
+            { name: "威尼斯的夜晚", desc: "游客散去，当地人出来遛狗，脚步声在石板路上回响，是威尼斯的另一面。" },
+            { name: "威尼斯的清晨", desc: "5-7点，运河水最平静，倒影最清晰，只有清洁工和摄影师。" },
+            { name: "威尼斯的雾", desc: "秋冬早晨，大运河被雾气笼罩，贡多拉像从画中驶出。" },
+            { name: "威尼斯的高水位", desc: "Acqua Alta，每年11月-2月，圣马可广场变成游泳池，穿雨靴是必修课。" },
+            { name: "威尼斯的狂欢节", desc: "2月的两周，面具、华服、神秘，每个人都可能是贵族或间谍。" },
+            { name: "威尼斯电影节", desc: "9月的丽都岛，红毯、明星、首映，是当代的威尼斯狂欢。" },
+            { name: "圣马可广场咖啡馆的管弦乐", desc: "花神和夸德里的乐队轮流演奏，音乐是广场的背景音。" },
+            { name: "威尼斯的街头艺人", desc: "手风琴、小提琴、歌剧，每个角落都可能有一场即兴演出。" },
+            { name: "威尼斯的猫", desc: "比居民还多，懒洋洋地晒着太阳，是威尼斯真正的主人。" },
+            { name: "威尼斯的鸽子", desc: "圣马可广场的标志性景观，但喂食被罚款，只能拍不能喂。" },
+            { name: "威尼斯的窗户", desc: "哥特式的尖拱窗，巴洛克的花边窗，每扇窗都是一幅画框。" },
+            { name: "威尼斯的门", desc: "褪色的油漆，生锈的门环，门牌号手写在水位线之上。" },
+            { name: "威尼斯的船栓", desc: "每个码头都有，狮子头、海豚、抽象的图案，是威尼斯的图腾。" },
+            { name: "威尼斯的路灯", desc: "复古的铸铁灯，昏黄的光线，夜晚比白天更威尼斯。" },
+            { name: "威尼斯的招牌", desc: "手写的店名，褪色的字母，比霓虹灯更有时间的痕迹。" },
+            { name: "威尼斯的桥栏", desc: "被无数手摸得光滑，锁着爱情锁，也刻着游客的涂鸦。" },
+            { name: "威尼斯的台阶", desc: "通往运河的台阶，水位上涨时被淹没，是威尼斯的海拔计。" },
+            { name: "威尼斯的烟囱", desc: "从屋顶伸出，形状各异，是辨认不同岛屿的标志。" },
+            { name: "威尼斯的屋顶", desc: "红色的瓦片，偶尔有花园，从钟楼上看像一片海洋。" },
+            { name: "威尼斯的运河倒影", desc: "水是最伟大的画家，把建筑画成对称的梦。" },
+            { name: "威尼斯的波纹", desc: "贡多拉划过的瞬间，破碎又重组，像时间的形状。" },
+            { name: "威尼斯的青苔", desc: "水线以下的绿色，是威尼斯与水的和解。" },
+            { name: "威尼斯的锈迹", desc: "铁门、铁窗、铁船栓，锈是威尼斯的另一种颜色。" },
+            { name: "威尼斯的褪色", desc: "油漆、壁画、招牌，时间是最好的滤镜。" },
+            { name: "威尼斯的修补", desc: "新老石材的接缝，是威尼斯的伤疤也是勋章。" },
+            { name: "威尼斯的船坞", desc: "Squero，贡多拉的造船厂，看一艘船如何诞生。" },
+            { name: "威尼斯的玻璃工坊", desc: "穆拉诺岛上的火与沙，1500年的秘密工艺。" },
+            { name: "威尼斯的蕾丝", desc: "布拉诺岛的传统，比玻璃更脆弱，比时间更持久。" },
+            { name: "威尼斯的面具", desc: "狂欢节的主角，每副面具背后都有一个角色。" },
+            { name: "威尼斯的贡多拉制作", desc: "280块木头，40种型号，只为一种船型。" },
+            { name: "威尼斯的划船比赛", desc: "Regata Storica，9月的传统赛事，彩色船队的游行。" },
+            { name: "威尼斯的鱼市场午餐", desc: "在里亚托市场买海鲜，找个码头坐着吃，是最地道的体验。" },
+            { name: "威尼斯的 Spritz", desc: "Aperol+Prosecco+苏打水，威尼斯的橙色黄昏。" },
+            { name: "威尼斯的 Cicchetti", desc: "小酒馆里的下酒菜，1-2欧一个，是威尼斯人的日常。" },
+            { name: "威尼斯的墨鱼面", desc: "吃完嘴唇发黑，是威尼斯的印章。" },
+            { name: "威尼斯的提拉米苏", desc: "发源地之一，比意大利其他地方的更湿润。" },
+            { name: "威尼斯的冰淇淋", desc: "Gelato，开心果和榛子是经典，但威尼斯有独特的奶油威士忌口味。" },
+            { name: "威尼斯的咖啡", desc: "站在吧台喝比坐着便宜一半，是威尼斯人的经济学。" },
+            { name: "威尼斯的酒", desc: "Prosecco 产区就在附近，气泡比香槟更轻盈。" },
+            { name: "威尼斯的书店", desc: "沉船书店（Libreria Acqua Alta），书放在浴缸和贡多拉里，防水是必修课。" },
+            { name: "威尼斯的纸店", desc: "手工信纸、羽毛笔、火漆印章，是写给未来的信。" },
+            { name: "威尼斯的面具店", desc: "从几欧的纪念品到几千欧的手工艺术品，选择你的角色。" },
+            { name: "威尼斯的玻璃店", desc: "穆拉诺的证书是保真的标志，但价格也是。" },
+            { name: "威尼斯的蕾丝店", desc: "布拉诺的蕾丝，每一针都是时间，所以昂贵。" },
+            { name: "威尼斯的香水店", desc: "Merchant of Venice，基于古老配方的现代香水。" },
+            { name: "威尼斯的糖果店", desc: "彩色糖果像珠宝，是威尼斯的颜色。" },
+            { name: "威尼斯的最后一张底片", desc: "当你按下第100次快门，威尼斯才真正属于你。" }
+        ];
+
+        let lockedSpots = new Set();
+        let currentSpot = null;
+
+        // 初始化
+        function init() {
+            const grid = document.getElementById('gridContainer');
+            const saved = localStorage.getItem('veniceCosLocked');
+            if (saved) {
+                lockedSpots = new Set(JSON.parse(saved));
+            }
+
+            for (let i = 1; i <= 100; i++) {
+                const card = document.createElement('div');
+                card.className = `number-card ${lockedSpots.has(i) ? 'locked' : 'available'}`;
+                card.textContent = i.toString().padStart(2, '0');
+                card.onclick = () => openModal(i);
+                
+                if (lockedSpots.has(i)) {
+                    const spotName = document.createElement('span');
+                    spotName.className = 'spot-name';
+                    spotName.textContent = spots[i-1].name;
+                    card.appendChild(spotName);
+                }
+                
+                grid.appendChild(card);
+            }
+
+            updateStats();
+        }
+
+        function openModal(num) {
+            if (lockedSpots.has(num)) return;
+            
+            currentSpot = num;
+            const spot = spots[num-1];
+            document.getElementById('modalNumber').textContent = num.toString().padStart(2, '0');
+            document.getElementById('modalSpot').textContent = spot.name;
+            document.getElementById('modalDesc').textContent = spot.desc;
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+            currentSpot = null;
+        }
+
+        function confirmLock() {
+            if (!currentSpot) return;
+            
+            lockedSpots.add(currentSpot);
+            localStorage.setItem('veniceCosLocked', JSON.stringify([...lockedSpots]));
+            
+            // 更新UI
+            const cards = document.querySelectorAll('.number-card');
+            const card = cards[currentSpot - 1];
+            card.className = 'number-card locked';
+            card.onclick = null;
+            
+            const spotName = document.createElement('span');
+            spotName.className = 'spot-name';
+            spotName.textContent = spots[currentSpot-1].name;
+            card.appendChild(spotName);
+            
+            // 庆祝动画
+            const cel = document.getElementById('celebration');
+            cel.classList.add('show');
+            setTimeout(() => cel.classList.remove('show'), 1000);
+            
+            updateStats();
+            closeModal();
+            
+            // 检查是否完成
+            if (lockedSpots.size === 100) {
+                setTimeout(() => alert('🎉 恭喜！你已打卡威尼斯全部100个景点！\n\nCOS环球记威尼斯篇，期待你的正片！'), 300);
+            }
+        }
+
+        function updateStats() {
+            const locked = lockedSpots.size;
+            const percent = Math.round(locked);
+            
+            document.getElementById('lockedCount').textContent = locked;
+            document.getElementById('availableCount').textContent = 100 - locked;
+            document.getElementById('percentCount').textContent = percent + '%';
+            document.getElementById('progressFill').style.width = percent + '%';
+        }
+
+        function resetAll() {
+            if (lockedSpots.size === 0) return;
+            
+            if (confirm(`确定要重置所有打卡记录吗？\n\n已打卡 ${lockedSpots.size} 个景点将全部解锁，不可恢复。`)) {
+                lockedSpots.clear();
+                localStorage.removeItem('veniceCosLocked');
+                
+                const grid = document.getElementById('gridContainer');
+                grid.innerHTML = '';
+                init();
+            }
+        }
+
+        // 点击模态框外部关闭
+        document.getElementById('modal').onclick = function(e) {
+            if (e.target === this) closeModal();
+        };
+
+        // 初始化
+        init();
+    </script>
+</body>
+</html>
